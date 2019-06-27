@@ -8,6 +8,11 @@
 #include <sys/syscall.h>
 #include <sys/sysproto.h>
 
+#include <sys/uio.h>
+#include <sys/syscallsubr.h>
+#include <sys/stat.h>
+#include <sys/fcntl.h>
+
 static int read_hook(struct thread *td, void *syscall_args)
 {
 	struct read_args *uap;
@@ -29,12 +34,21 @@ static int read_hook(struct thread *td, void *syscall_args)
 	return error;
 }
 
+
+static int setup()
+{
+	return kern_openat(curthread, AT_FDCWD, "/home/jack/test.txt", UIO_SYSSPACE, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR );
+}
+
 static int load (struct module *module, int cmd, void *args)
 {
 	int error = 0;
+	int res = 0;
 
 	switch (cmd) {
 		case MOD_LOAD: 
+			res = setup();
+			printf("%d\n", res);
 			sysent[SYS_read].sy_call = (sy_call_t *)read_hook;
 			break;
 
